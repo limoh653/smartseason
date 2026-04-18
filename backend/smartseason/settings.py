@@ -63,18 +63,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'smartseason.wsgi.application'
 
-# ✅ POSTGRESQL DATABASE CONFIG
+# POSTGRESQL DATABASE CONFIG
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+        'NAME': 'smartseason_db',
+        'USER': 'smartseason_user',
+        'PASSWORD': '1965',  
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
-
 # REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
