@@ -37,7 +37,7 @@ export default function AgentDashboard() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>Welcome, {user?.first_name || user?.username} 👋</h1>
+      <h1 style={styles.title}>Welcome, {user?.first_name || user?.username}</h1>
       <p style={styles.subtitle}>Here's the status of your assigned fields.</p>
 
       {/* ── Stats ── */}

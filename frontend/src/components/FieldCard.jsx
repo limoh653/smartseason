@@ -1,7 +1,6 @@
 /**
  * FieldCard — displays a summary card for a single field.
- * Used in both the admin and agent dashboard lists.
- * Clicking navigates to the field detail page.
+ * Clean version (no emojis / graphics)
  */
 
 import React from 'react';
@@ -23,6 +22,7 @@ const stageColors = {
 
 export default function FieldCard({ field }) {
   const navigate = useNavigate();
+
   const statusStyle = statusColors[field.status] || statusColors.active;
   const stageStyle  = stageColors[field.current_stage] || {};
 
@@ -31,28 +31,48 @@ export default function FieldCard({ field }) {
       onClick={() => navigate(`/fields/${field.id}`)}
       style={{ ...styles.card, borderLeft: `4px solid ${statusStyle.border}` }}
     >
+      {/* Header */}
       <div style={styles.header}>
         <h3 style={styles.name}>{field.name}</h3>
-        <span style={{ ...styles.badge, background: statusStyle.bg, color: statusStyle.text }}>
+        <span
+          style={{
+            ...styles.badge,
+            background: statusStyle.bg,
+            color: statusStyle.text,
+          }}
+        >
           {field.status.replace('_', ' ')}
         </span>
       </div>
 
-      <p style={styles.crop}>🌾 {field.crop_type}</p>
+      {/* Crop Type */}
+      <p style={styles.crop}>{field.crop_type}</p>
 
-      {field.location && <p style={styles.meta}>📍 {field.location}</p>}
+      {/* Location */}
+      {field.location && (
+        <p style={styles.meta}>{field.location}</p>
+      )}
 
+      {/* Footer */}
       <div style={styles.footer}>
-        <span style={{ ...styles.stageBadge, background: stageStyle.bg, color: stageStyle.text }}>
+        <span
+          style={{
+            ...styles.stageBadge,
+            background: stageStyle.bg,
+            color: stageStyle.text,
+          }}
+        >
           {field.current_stage}
         </span>
+
         <span style={styles.date}>
           Planted: {new Date(field.planting_date).toLocaleDateString()}
         </span>
       </div>
 
+      {/* Assigned Agent */}
       {field.assigned_to && (
-        <p style={styles.agent}>👤 {field.assigned_to}</p>
+        <p style={styles.agent}>{field.assigned_to}</p>
       )}
     </div>
   );
@@ -60,18 +80,63 @@ export default function FieldCard({ field }) {
 
 const styles = {
   card: {
-    background: '#fff', borderRadius: '10px', padding: '1.25rem',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)', cursor: 'pointer',
+    background: '#fff',
+    borderRadius: '10px',
+    padding: '1.25rem',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    cursor: 'pointer',
     transition: 'transform 0.15s, box-shadow 0.15s',
     marginBottom: '1rem',
   },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' },
-  name: { margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1a2e1a' },
-  badge: { fontSize: '0.75rem', padding: '3px 10px', borderRadius: '12px', fontWeight: 600, textTransform: 'capitalize' },
-  crop: { margin: '0.25rem 0', color: '#4a6741', fontWeight: 500 },
-  meta: { margin: '0.2rem 0', color: '#888', fontSize: '0.85rem' },
-  footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' },
-  stageBadge: { fontSize: '0.8rem', padding: '3px 10px', borderRadius: '8px', fontWeight: 600, textTransform: 'capitalize' },
-  date: { fontSize: '0.8rem', color: '#888' },
-  agent: { margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#6a8f6a' },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.5rem',
+  },
+  name: {
+    margin: 0,
+    fontSize: '1.05rem',
+    fontWeight: 700,
+    color: '#1a2e1a',
+  },
+  badge: {
+    fontSize: '0.75rem',
+    padding: '3px 10px',
+    borderRadius: '12px',
+    fontWeight: 600,
+    textTransform: 'capitalize',
+  },
+  crop: {
+    margin: '0.25rem 0',
+    color: '#4a6741',
+    fontWeight: 500,
+  },
+  meta: {
+    margin: '0.2rem 0',
+    color: '#888',
+    fontSize: '0.85rem',
+  },
+  footer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: '0.75rem',
+  },
+  stageBadge: {
+    fontSize: '0.8rem',
+    padding: '3px 10px',
+    borderRadius: '8px',
+    fontWeight: 600,
+    textTransform: 'capitalize',
+  },
+  date: {
+    fontSize: '0.8rem',
+    color: '#888',
+  },
+  agent: {
+    margin: '0.5rem 0 0',
+    fontSize: '0.82rem',
+    color: '#6a8f6a',
+  },
 };
