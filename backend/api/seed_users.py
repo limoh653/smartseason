@@ -7,6 +7,11 @@ def create_default_users():
             email="admin@gmail.com",
             password="admin123"
         )
+    else:
+        user = User.objects.get(username="admin")
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
 
     if not User.objects.filter(username="user1").exists():
         User.objects.create_user(
