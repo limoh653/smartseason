@@ -1,14 +1,4 @@
-"""
-API Views for SmartSeason.
 
-AuthView           — login endpoint returning JWT tokens + user info
-MeView             — returns current authenticated user's info
-AgentListView      — admin fetches list of all agents (for assignment dropdown)
-FieldListCreateView — GET all fields (filtered by role) / POST create new field
-FieldDetailView    — GET / PUT / DELETE a single field
-FieldUpdateView    — POST a stage update + notes for a field (agents only)
-DashboardStatsView — aggregated summary stats for the dashboard
-"""
 
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
@@ -28,7 +18,7 @@ from .serializers import (
 from .permissions import IsAdmin, IsAgent, IsAdminOrAssignedAgent
 
 
-# ─── Auth ────────────────────────────────────────────────────────────────────
+#AuthView this is a login endpoint returning JWT tokens + user inf
 
 class AuthView(APIView):
     """
