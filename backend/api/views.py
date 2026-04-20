@@ -21,12 +21,7 @@ from .permissions import IsAdmin, IsAgent, IsAdminOrAssignedAgent
 #AuthView this is a login endpoint returning JWT tokens + user inf
 
 class AuthView(APIView):
-    """
-    POST /api/auth/login/
-    Accepts { username, password } and returns JWT access/refresh tokens
-    along with the user's profile info.
-    """
-    permission_classes = []  # Public endpoint
+    permission_classes = []
 
     def post(self, request):
         from django.contrib.auth import authenticate
@@ -42,19 +37,21 @@ class AuthView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Ensure the user has a profile; create with 'agent' role if missing
-        UserProfile.objects.get_or_create(user=user, defaults={'role': 'agent'})
+        # Ensure profile exists (DO NOT force role = agent blindly)
+        profile, created = UserProfile.objects.get_or_create(user=user)
 
-        # Generate JWT tokens
+        # Assign role only if missing
+        if created:
+            profile.role = 'admin' if user.is_superuser else 'agent'
+            profile.save()
+
         refresh = RefreshToken.for_user(user)
 
         return Response({
-            'access':  str(refresh.access_token),
+            'access': str(refresh.access_token),
             'refresh': str(refresh),
-            'user':    UserSerializer(user).data,
+            'user': UserSerializer(user).data,
         })
-
-
 class MeView(APIView):
     """GET /api/auth/me/ — returns info about the currently logged-in user."""
     permission_classes = [IsAuthenticated]
@@ -76,7 +73,7 @@ class AgentListView(generics.ListAPIView):
     queryset = User.objects.filter(profile__role='agent').select_related('profile')
 
 
-# ─── Fields ──────────────────────────────────────────────────────────────────
+# Fields view
 
 class FieldListCreateView(APIView):
     """
@@ -160,7 +157,7 @@ class FieldDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# ─── Field Updates ───────────────────────────────────────────────────────────
+# Field Updates view
 
 class FieldUpdateView(APIView):
     """
@@ -203,8 +200,7 @@ class FieldUpdateView(APIView):
         return Response(FieldUpdateSerializer(update).data, status=status.HTTP_201_CREATED)
 
 
-# ─── Dashboard Stats ─────────────────────────────────────────────────────────
-
+# Dashboard Stats 
 class DashboardStatsView(APIView):
     """
     GET /api/dashboard/
