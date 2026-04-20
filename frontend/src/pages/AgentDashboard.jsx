@@ -1,7 +1,6 @@
 /**
- * AgentDashboard — overview for field agents.
- * Shows only the fields assigned to the logged-in agent,
- * with status counts and the field list.
+ * AgentDashboard it gives the overview for field agents.
+
  */
 
 import React, { useEffect, useState } from 'react';
@@ -50,7 +49,7 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      {/* ── At Risk Alert ── */}
+      {/* Alerts if the field is at risk */}
       {stats?.at_risk_fields?.length > 0 && (
         <div style={styles.alert}>
           <strong>⚠️ Attention needed:</strong>{' '}
@@ -58,7 +57,7 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      {/* ── Field Cards ── */}
+      {/* Shows the fieldcard */}
       <h2 style={styles.sectionTitle}>My Fields</h2>
       {fields.length === 0
         ? <p style={styles.empty}>No fields assigned to you yet.</p>

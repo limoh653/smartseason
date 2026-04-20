@@ -1,10 +1,5 @@
 /**
  * FieldDetail — shows full info for one field.
- *
- * Admins see: all field info + edit link
- * Agents see: their assigned field + a form to post stage updates with notes
- *
- * Both see the update history log.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -76,7 +71,7 @@ export default function FieldDetail() {
     <div style={styles.page}>
       <button onClick={() => navigate(-1)} style={styles.back}>← Back</button>
 
-      {/* ── Header ── */}
+      {/*Header */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.fieldName}>{field.name}</h1>
@@ -87,7 +82,7 @@ export default function FieldDetail() {
         </span>
       </div>
 
-      {/* ── Info Grid ── */}
+      {/*Information  Grid*/}
       <div style={styles.infoGrid}>
         <InfoRow label="Stage"         value={field.current_stage} />
         <InfoRow label="Planted"       value={new Date(field.planting_date).toLocaleDateString()} />
@@ -96,7 +91,7 @@ export default function FieldDetail() {
         <InfoRow label="Last Updated"  value={new Date(field.updated_at).toLocaleString()} />
       </div>
 
-      {/* ── Update Form (agents and admins can post updates) ── */}
+      {/*  Update Form where agents and admins can post updates */}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>Post an Update</h2>
         <form onSubmit={handleUpdate}>
@@ -134,7 +129,7 @@ export default function FieldDetail() {
         </form>
       </div>
 
-      {/* ── Update History ── */}
+      {/* it updates history automatically*/}
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>Update History</h2>
         {field.recent_updates.length === 0

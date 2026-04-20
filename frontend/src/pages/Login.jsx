@@ -1,6 +1,5 @@
 /**
  * Login page — collects username + password and posts to /api/auth/login/.
- * On success, stores tokens via AuthContext.login() and redirects to dashboard.
  */
 
 import React, { useState } from 'react';

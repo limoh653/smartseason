@@ -1,8 +1,6 @@
 /**
- * ManageFields — admin-only page.
- * Lists all fields with a button to create a new one.
- * Inline form for creating fields (name, crop, planting date, location, assigned agent).
- * Clicking a field card navigates to FieldDetail where the admin can edit/delete.
+ * ManageFields, this is an admin only page where admin can  click the fieldcard and see the details of the field, he/she can edit aor delete a field also..
+ 
  */
 
 import React, { useEffect, useState } from 'react';
@@ -49,7 +47,7 @@ export default function ManageFields() {
 
     try {
       const payload = { ...form };
-      // Remove empty assigned_to_id to avoid validation errors
+      //  This Removes empty assigned_to_id to avoid validation errors
       if (!payload.assigned_to_id) delete payload.assigned_to_id;
 
       const res = await api.post('/api/fields/', payload);
@@ -77,7 +75,7 @@ export default function ManageFields() {
 
       {message && <p style={styles.message}>{message}</p>}
 
-      {/* ── Create Field Form ── */}
+      {/* Create a Field Form*/}
       {showForm && (
         <div style={styles.formCard}>
           <h2 style={styles.formTitle}>Create New Field</h2>
@@ -121,7 +119,7 @@ export default function ManageFields() {
         </div>
       )}
 
-      {/* ── Fields List ── */}
+      {/*Fields List */}
       <div style={styles.list}>
         {fields.length === 0
           ? <p style={styles.empty}>No fields yet. Create one above.</p>

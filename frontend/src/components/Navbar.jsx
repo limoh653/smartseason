@@ -1,6 +1,6 @@
 /**
- * Navbar — top navigation bar.
- * Shows different links based on user role.
+ * Navbar  above the dashboard.
+ * Shows different links based on user role either admin or field agent.
  * Displays the logged-in user's name and a logout button.
  */
 
@@ -28,7 +28,7 @@ export default function Navbar() {
           Dashboard
         </Link>
 
-        {/* Admin-only navigation */}
+        {/* Admin navigation */}
         {isAdmin() && (
           <Link
             to="/fields"

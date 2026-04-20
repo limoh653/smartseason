@@ -1,10 +1,4 @@
-/**
- * AdminDashboard — overview for coordinators.
- * Shows:
- *   - Summary stats cards (total fields, agents, status breakdown)
- *   - At-risk fields alert list
- *   - Full list of all fields as FieldCards
- */
+
 
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
@@ -13,7 +7,7 @@ import FieldCard from '../components/FieldCard';
 export default function AdminDashboard() {
   const [stats, setStats]   = useState(null);
   const [fields, setFields] = useState([]);
-  const [filter, setFilter] = useState('all'); // status filter
+  const [filter, setFilter] = useState('all'); // status filter admin or agent
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +28,7 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Filter fields by selected status tab
+  // Filters fields by selected status 
   const filteredFields = filter === 'all'
     ? fields
     : fields.filter(f => f.status === filter);
@@ -45,7 +39,7 @@ export default function AdminDashboard() {
     <div style={styles.page}>
       <h1 style={styles.title}>Admin Dashboard</h1>
 
-      {/* ── Stats Cards ── */}
+      {/* statistics card */}
       {stats && (
         <div style={styles.statsGrid}>
           <StatCard label="Total Fields"  value={stats.total_fields}               color="#2d6a2d" />
@@ -56,7 +50,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Stage Breakdown ── */}
+      {/* breaks down the stage of the crops */}
       {stats && (
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>Stage Breakdown</h2>
@@ -71,7 +65,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── At Risk Alert ── */}
+      {/* Alerts if the field is at risk */}
       {stats?.at_risk_fields?.length > 0 && (
         <div style={styles.alert}>
           <h3 style={styles.alertTitle}>⚠️ Fields At Risk ({stats.at_risk_fields.length})</h3>
@@ -83,7 +77,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Field List with Filter Tabs ── */}
+      {/* it filters the field status */}
       <div style={styles.section}>
         <div style={styles.tabRow}>
           {['all', 'active', 'at_risk', 'completed'].map(s => (

@@ -1,12 +1,11 @@
 /**
- * FieldCard — displays a summary card for a single field.
- * Clean version (no emojis / graphics)
+ fielcard component which shows the details of a field
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Color coding for status and stage badges
+// Colors styling for status and stage badges
 const statusColors = {
   active:    { bg: '#e8f5e9', text: '#2e7d32', border: '#a5d6a7' },
   at_risk:   { bg: '#fff3e0', text: '#e65100', border: '#ffcc80' },

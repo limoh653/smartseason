@@ -1,12 +1,3 @@
-/**
- * AuthContext — global authentication state.
- *
- * Provides:
- *   user       — the logged-in user object (or null)
- *   login()    — persists tokens + user to localStorage and updates state
- *   logout()   — clears storage and redirects to login
- *   isAdmin()  — convenience helper to check role
- */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 

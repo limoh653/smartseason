@@ -1,7 +1,7 @@
 /**
- * PrivateRoute — wraps protected pages.
- * Redirects unauthenticated users to /login.
- * Optionally restricts access to a specific role ('admin' | 'agent').
+ * PrivateRoute  which wraps protected pages.
+ * Redirects unauthenticated users to /login route.
+ * redirects to either admin or field agent
  */
 
 import React from "react";
@@ -14,10 +14,10 @@ export default function PrivateRoute({ children, requiredRole }) {
   // Wait until auth state is ready
   if (loading) return null;
 
-  // Not logged in → redirect
+  // Not logged in it redirects to login page
   if (!user) return <Navigate to="/login" replace />;
 
-  // Role check
+  // checks role
   if (requiredRole && user.role !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
