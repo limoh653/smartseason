@@ -1,14 +1,27 @@
+"""
+API Views for SmartSeason.
 
+AuthView           — login: sets httpOnly cookies for access + refresh tokens
+LogoutView         — clears the auth cookies
+MeView             — returns current user info (reads from cookie automatically)
+AgentListView      — admin fetches list of all agents
+FieldListCreateView — GET all fields / POST create new field
+FieldDetailView    — GET / PUT / DELETE a single field
+FieldUpdateView    — POST a stage update + notes
+DashboardStatsView — aggregated summary stats
+"""
 
 from django.contrib.auth.models import User
-from django.db.models import Count, Q
 from django.utils import timezone
+from django.middleware.csrf import get_token
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 from .models import Field, FieldUpdate, UserProfile
 from .serializers import (
@@ -18,10 +31,38 @@ from .serializers import (
 from .permissions import IsAdmin, IsAgent, IsAdminOrAssignedAgent
 
 
-#AuthView this is a login endpoint returning JWT tokens + user inf
+# ── Custom JWT authentication that reads from cookies ──────────────────────────
+
+class CookieJWTAuthentication(JWTAuthentication):
+    """
+    Overrides the default header-based JWT auth to instead
+    read the access token from the httpOnly 'access_token' cookie.
+    """
+
+    def authenticate(self, request):
+        raw_token = request.COOKIES.get('access_token')
+        if raw_token is None:
+            return None  # No cookie — unauthenticated
+
+        try:
+            validated_token = self.get_validated_token(raw_token)
+        except (InvalidToken, TokenError):
+            return None  # Invalid/expired token
+
+        return self.get_user(validated_token), validated_token
+
+
+# ── Auth ───────────────────────────────────────────────────────────────────────
 
 class AuthView(APIView):
-    permission_classes = []
+    """
+    POST /api/auth/login/
+    Authenticates the user and sets httpOnly cookies:
+      - access_token  (8 hours)
+      - refresh_token (7 days)
+    Returns user info in the response body (no tokens in body).
+    """
+    permission_classes = []  # Public
 
     def post(self, request):
         from django.contrib.auth import authenticate
@@ -30,72 +71,103 @@ class AuthView(APIView):
         password = request.data.get('password', '')
 
         user = authenticate(username=username, password=password)
-
         if not user:
             return Response(
                 {'detail': 'Invalid username or password.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Ensure profile exists (DO NOT force role = agent blindly)
-        profile, created = UserProfile.objects.get_or_create(user=user)
+        # Ensure profile exists
+        UserProfile.objects.get_or_create(user=user, defaults={'role': 'agent'})
 
-        # Assign role only if missing
-        if created:
-            profile.role = 'admin' if user.is_superuser else 'agent'
-            profile.save()
-
+        # Generate tokens
         refresh = RefreshToken.for_user(user)
+        access_token  = str(refresh.access_token)
+        refresh_token = str(refresh)
 
-        return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
+        response = Response({
             'user': UserSerializer(user).data,
+            # No tokens in the response body — they live in cookies only
         })
+
+        # Set httpOnly cookies — JavaScript cannot read these
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,           # JS cannot access
+            secure=False,            # Set True in production (HTTPS)
+            samesite='Lax',          # Protects against CSRF
+            max_age=60 * 60 * 8,     # 8 hours in seconds
+        )
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            secure=False,            # Set True in production
+            samesite='Lax',
+            max_age=60 * 60 * 24 * 7,  # 7 days in seconds
+        )
+
+        return response
+
+
+class LogoutView(APIView):
+    """
+    POST /api/auth/logout/
+    Clears both auth cookies, effectively logging the user out.
+    """
+    permission_classes = []
+
+    def post(self, request):
+        response = Response({'detail': 'Logged out successfully.'})
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response
+
+
 class MeView(APIView):
-    """GET /api/auth/me/ — returns info about the currently logged-in user."""
+    """
+    GET /api/auth/me/
+    Returns the currently logged-in user's info.
+    Authentication is handled via the httpOnly cookie automatically.
+    """
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
 
-# ─── Agents ──────────────────────────────────────────────────────────────────
+# ── Agents ─────────────────────────────────────────────────────────────────────
 
 class AgentListView(generics.ListAPIView):
-    """
-    GET /api/agents/
-    Admin-only. Returns all users with the 'agent' role.
-    Used to populate the assignment dropdown when creating/editing a field.
-    """
+    """GET /api/agents/ — admin only, returns all agent users."""
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAdmin]
     serializer_class = AgentSerializer
     queryset = User.objects.filter(profile__role='agent').select_related('profile')
 
 
-# Fields view
+# ── Fields ─────────────────────────────────────────────────────────────────────
 
 class FieldListCreateView(APIView):
     """
-    GET  /api/fields/ — list fields (all for admin, assigned only for agent)
+    GET  /api/fields/ — list fields (all for admin, assigned for agent)
     POST /api/fields/ — create a new field (admin only)
     """
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         role = getattr(getattr(request.user, 'profile', None), 'role', None)
-
         if role == 'admin':
             fields = Field.objects.all().select_related('assigned_to', 'assigned_to__profile')
         else:
-            # Agents only see fields assigned to them
             fields = Field.objects.filter(assigned_to=request.user).select_related('assigned_to')
 
-        serializer = FieldListSerializer(fields, many=True)
-        return Response(serializer.data)
+        return Response(FieldListSerializer(fields, many=True).data)
 
     def post(self, request):
-        # Only admins may create fields
         role = getattr(getattr(request.user, 'profile', None), 'role', None)
         if role != 'admin':
             return Response({'detail': 'Only admins can create fields.'}, status=status.HTTP_403_FORBIDDEN)
@@ -108,11 +180,8 @@ class FieldListCreateView(APIView):
 
 
 class FieldDetailView(APIView):
-    """
-    GET    /api/fields/<id>/ — field detail + recent updates
-    PUT    /api/fields/<id>/ — update field (admin only)
-    DELETE /api/fields/<id>/ — delete field (admin only)
-    """
+    """GET / PUT / DELETE a single field."""
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAdminOrAssignedAgent]
 
     def get_object(self, pk, request):
@@ -157,14 +226,11 @@ class FieldDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# Field Updates view
+# ── Field Updates ──────────────────────────────────────────────────────────────
 
 class FieldUpdateView(APIView):
-    """
-    POST /api/fields/<id>/updates/
-    Agents (and admins) post a stage update + optional notes for a field.
-    Creates a FieldUpdate log entry and advances the field's current_stage.
-    """
+    """POST /api/fields/<id>/updates/ — post a stage update."""
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAdminOrAssignedAgent]
 
     def post(self, request, pk):
@@ -185,48 +251,31 @@ class FieldUpdateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create update log entry
         update = FieldUpdate.objects.create(
-            field=field,
-            agent=request.user,
-            new_stage=new_stage,
-            notes=notes,
+            field=field, agent=request.user,
+            new_stage=new_stage, notes=notes,
         )
-
-        # Advance the field's current stage
         field.current_stage = new_stage
         field.save()
 
         return Response(FieldUpdateSerializer(update).data, status=status.HTTP_201_CREATED)
 
 
-# Dashboard Stats 
+# ── Dashboard ──────────────────────────────────────────────────────────────────
+
 class DashboardStatsView(APIView):
-    """
-    GET /api/dashboard/
-    Returns aggregated stats tailored to the requesting user's role.
-
-    Admin receives:
-      - total fields / agents
-      - breakdown by status and stage
-      - fields at risk
-      - recent activity
-
-    Agent receives:
-      - their assigned field counts
-      - status breakdown for their fields
-    """
+    """GET /api/dashboard/ — aggregated stats for the dashboard."""
+    authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         role = getattr(getattr(request.user, 'profile', None), 'role', None)
 
         if role == 'admin':
-            fields = Field.objects.all().select_related('assigned_to')
+            fields = list(Field.objects.all().select_related('assigned_to'))
         else:
-            fields = Field.objects.filter(assigned_to=request.user)
+            fields = list(Field.objects.filter(assigned_to=request.user))
 
-        # Compute status for each field (uses model @property)
         status_counts = {'active': 0, 'at_risk': 0, 'completed': 0}
         stage_counts  = {'planted': 0, 'growing': 0, 'ready': 0, 'harvested': 0}
         at_risk_fields = []
@@ -235,19 +284,16 @@ class DashboardStatsView(APIView):
             s = f.status
             status_counts[s] = status_counts.get(s, 0) + 1
             stage_counts[f.current_stage] = stage_counts.get(f.current_stage, 0) + 1
-
             if s == 'at_risk':
                 at_risk_fields.append({
-                    'id':   f.id,
-                    'name': f.name,
-                    'crop': f.crop_type,
+                    'id': f.id, 'name': f.name, 'crop': f.crop_type,
                     'days_planted': (timezone.now().date() - f.planting_date).days,
                 })
 
         stats = {
-            'total_fields':  len(fields) if not hasattr(fields, 'count') else fields.count(),
-            'status_counts': status_counts,
-            'stage_counts':  stage_counts,
+            'total_fields':   len(fields),
+            'status_counts':  status_counts,
+            'stage_counts':   stage_counts,
             'at_risk_fields': at_risk_fields,
         }
 

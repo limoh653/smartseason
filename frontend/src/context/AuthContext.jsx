@@ -1,44 +1,52 @@
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import api from '../api/axios'
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-const AuthContext = createContext(null);
+const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // wait for localStorage read
+  const [user, setUser]       = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  // On mount, restore user from localStorage (survives page refresh)
+  // On mount, verify the cookie with the server and get user info
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const fetchMe = async () => {
+      try {
+        const res = await api.get('/api/auth/me/')
+        setUser(res.data)
+      } catch {
+        setUser(null)  // Cookie missing or expired
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false);
-  }, []);
+    fetchMe()
+  }, [])
 
-  const login = ({ access, refresh, user: userData }) => {
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-  };
+  const login = async ({ username, password }) => {
+    const res = await api.post('/api/auth/login/', { username, password })
+    // Cookies are set by Django — just save the user info
+    setUser(res.data.user)
+    return res.data.user
+  }
 
-  const logout = () => {
-    localStorage.clear();
-    setUser(null);
-    window.location.href = '/login';
-  };
+  const logout = async () => {
+    try {
+      await api.post('/api/auth/logout/')  // clears cookies server-side
+    } finally {
+      setUser(null)
+      window.location.href = '/login'
+    }
+  }
 
-  const isAdmin = () => user?.role === 'admin';
+  const isAdmin = () => user?.role === 'admin'
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isAdmin, loading }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
-// Custom hook for easy access in any component
 export function useAuth() {
-  return useContext(AuthContext);
+  return useContext(AuthContext)
 }
