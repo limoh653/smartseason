@@ -1,11 +1,14 @@
 /**
- * Axios instance pre-configured for the SmartSeason API.
+ Axios instance set for the SmartSeason API backend.
  */
-
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.PROD
+      ? "https://smartseason-07cd.onrender.com"
+      : "http://localhost:8000"),
 });
 
 // Attach JWT to every outgoing request
