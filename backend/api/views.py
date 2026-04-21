@@ -1,19 +1,20 @@
 """
 API Views for SmartSeason.
 
-AuthView           — login: sets httpOnly cookies for access + refresh tokens
-LogoutView         — clears the auth cookies
-MeView             — returns current user info (reads from cookie automatically)
-AgentListView      — admin fetches list of all agents
-FieldListCreateView — GET all fields / POST create new field
-FieldDetailView    — GET / PUT / DELETE a single field
-FieldUpdateView    — POST a stage update + notes
-DashboardStatsView — aggregated summary stats
+CookieJWTAuthentication — reads JWT from httpOnly cookie instead of header
+AuthView                — login: sets httpOnly cookies for access + refresh tokens
+LogoutView              — clears the auth cookies server-side
+MeView                  — returns current user info (reads from cookie)
+AgentListView           — admin fetches list of all agents
+FieldListCreateView     — GET all fields / POST create new field
+FieldDetailView         — GET / PUT / DELETE a single field
+FieldUpdateView         — POST a stage update + notes
+DashboardStatsView      — aggregated summary stats
 """
 
 from django.contrib.auth.models import User
 from django.utils import timezone
-from django.middleware.csrf import get_token
+from django.conf import settings as django_settings
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -28,43 +29,57 @@ from .serializers import (
     FieldSerializer, FieldListSerializer,
     FieldUpdateSerializer, UserSerializer, AgentSerializer
 )
-from .permissions import IsAdmin, IsAgent, IsAdminOrAssignedAgent
+from .permissions import IsAdmin, IsAdminOrAssignedAgent
 
 
-# ── Custom JWT authentication that reads from cookies ──────────────────────────
+# ── Cookie JWT Auth ────────────────────────────────────────────────────────────
 
 class CookieJWTAuthentication(JWTAuthentication):
     """
-    Overrides the default header-based JWT auth to instead
-    read the access token from the httpOnly 'access_token' cookie.
+    Overrides default header-based JWT auth to read the access token
+    from the httpOnly 'access_token' cookie instead.
+    Falls back gracefully to None if cookie is missing or invalid.
     """
 
     def authenticate(self, request):
         raw_token = request.COOKIES.get('access_token')
         if raw_token is None:
-            return None  # No cookie — unauthenticated
+            return None  # No cookie — treat as unauthenticated
 
         try:
             validated_token = self.get_validated_token(raw_token)
         except (InvalidToken, TokenError):
-            return None  # Invalid/expired token
+            return None  # Expired or tampered token — treat as unauthenticated
 
         return self.get_user(validated_token), validated_token
 
 
-# ── Auth ───────────────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
 
-from django.conf import settings as django_settings
+def get_cookie_settings():
+    """
+    Returns cookie security settings based on environment.
+    Production (DEBUG=False): secure=True, samesite=None  — required for HTTPS cross-domain
+    Development (DEBUG=True):  secure=False, samesite=Lax — works on localhost
+    """
+    is_production = not django_settings.DEBUG
+    return {
+        'secure':   is_production,
+        'samesite': 'None' if is_production else 'Lax',
+    }
+
+
+# ── Auth ───────────────────────────────────────────────────────────────────────
 
 class AuthView(APIView):
     """
     POST /api/auth/login/
-    Authenticates the user and sets httpOnly cookies:
+    Authenticates username + password and sets two httpOnly cookies:
       - access_token  (8 hours)
       - refresh_token (7 days)
-    Returns user info in the response body (no tokens in body).
+    Returns only the user object in the response body — no tokens exposed.
     """
-    permission_classes = []
+    permission_classes = []  # Public endpoint
 
     def post(self, request):
         from django.contrib.auth import authenticate
@@ -79,38 +94,35 @@ class AuthView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Ensure profile exists
+        # Ensure every user has a profile — create with agent role if missing
         UserProfile.objects.get_or_create(user=user, defaults={'role': 'agent'})
 
-        # Generate tokens
-        refresh      = RefreshToken.for_user(user)
+        # Generate JWT tokens
+        refresh       = RefreshToken.for_user(user)
         access_token  = str(refresh.access_token)
         refresh_token = str(refresh)
 
-        # In production (Render) we're on HTTPS across different domains
-        # so cookies need secure=True and samesite='None'
-        # In development cookies are on same localhost so Lax + secure=False works
-        is_production = not django_settings.DEBUG
-        secure   = is_production
-        samesite = 'None' if is_production else 'Lax'
+        cookie = get_cookie_settings()
 
         response = Response({'user': UserSerializer(user).data})
 
         response.set_cookie(
             key='access_token',
             value=access_token,
-            httponly=True,
-            secure=secure,
-            samesite=samesite,
-            max_age=60 * 60 * 8,        # 8 hours
+            httponly=True,           # JS cannot read this cookie
+            secure=cookie['secure'],
+            samesite=cookie['samesite'],
+            max_age=60 * 60 * 8,     # 8 hours in seconds
+            path='/',                # available on all API paths
         )
         response.set_cookie(
             key='refresh_token',
             value=refresh_token,
             httponly=True,
-            secure=secure,
-            samesite=samesite,
-            max_age=60 * 60 * 24 * 7,   # 7 days
+            secure=cookie['secure'],
+            samesite=cookie['samesite'],
+            max_age=60 * 60 * 24 * 7,  # 7 days in seconds
+            path='/',
         )
 
         return response
@@ -119,35 +131,28 @@ class AuthView(APIView):
 class LogoutView(APIView):
     """
     POST /api/auth/logout/
-    Clears both auth cookies server-side.
+    Deletes both auth cookies server-side.
+    Must use the same secure/samesite values as when the cookies were set,
+    otherwise the browser won't match and won't delete them.
     """
     permission_classes = []
 
     def post(self, request):
-        is_production = not django_settings.DEBUG
-        secure   = is_production
-        samesite = 'None' if is_production else 'Lax'
+        cookie = get_cookie_settings()
 
         response = Response({'detail': 'Logged out successfully.'})
-
-        # Must pass same secure/samesite as when setting
-        # otherwise the browser won't match and delete the cookie
-        response.delete_cookie(
-            'access_token',
-            samesite=samesite,
-        )
-        response.delete_cookie(
-            'refresh_token',
-            samesite=samesite,
-        )
+        response.delete_cookie('access_token',  path='/', samesite=cookie['samesite'])
+        response.delete_cookie('refresh_token', path='/', samesite=cookie['samesite'])
         return response
 
 
 class MeView(APIView):
     """
     GET /api/auth/me/
-    Returns the currently logged-in user's info.
-    Authentication is handled via the httpOnly cookie automatically.
+    Returns info about the currently authenticated user.
+    Auth is handled automatically via the httpOnly cookie.
+    Returns 401 if cookie is missing or expired — this is expected on page load
+    when the user is not logged in (handled gracefully in AuthContext).
     """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -159,7 +164,11 @@ class MeView(APIView):
 # ── Agents ─────────────────────────────────────────────────────────────────────
 
 class AgentListView(generics.ListAPIView):
-    """GET /api/agents/ — admin only, returns all agent users."""
+    """
+    GET /api/agents/
+    Admin only. Returns all users with role=agent.
+    Used to populate the assignment dropdown when creating/editing a field.
+    """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAdmin]
     serializer_class = AgentSerializer
@@ -170,17 +179,19 @@ class AgentListView(generics.ListAPIView):
 
 class FieldListCreateView(APIView):
     """
-    GET  /api/fields/ — list fields (all for admin, assigned for agent)
-    POST /api/fields/ — create a new field (admin only)
+    GET  /api/fields/ — returns all fields for admin, assigned fields for agent
+    POST /api/fields/ — creates a new field (admin only)
     """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         role = getattr(getattr(request.user, 'profile', None), 'role', None)
+
         if role == 'admin':
             fields = Field.objects.all().select_related('assigned_to', 'assigned_to__profile')
         else:
+            # Agents only see fields assigned to them
             fields = Field.objects.filter(assigned_to=request.user).select_related('assigned_to')
 
         return Response(FieldListSerializer(fields, many=True).data)
@@ -188,7 +199,10 @@ class FieldListCreateView(APIView):
     def post(self, request):
         role = getattr(getattr(request.user, 'profile', None), 'role', None)
         if role != 'admin':
-            return Response({'detail': 'Only admins can create fields.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'Only admins can create fields.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         serializer = FieldSerializer(data=request.data)
         if serializer.is_valid():
@@ -198,13 +212,19 @@ class FieldListCreateView(APIView):
 
 
 class FieldDetailView(APIView):
-    """GET / PUT / DELETE a single field."""
+    """
+    GET    /api/fields/<id>/ — field detail + recent updates
+    PUT    /api/fields/<id>/ — update field metadata (admin only)
+    DELETE /api/fields/<id>/ — delete field (admin only)
+    """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAdminOrAssignedAgent]
 
     def get_object(self, pk, request):
         try:
-            field = Field.objects.select_related('assigned_to').prefetch_related('updates__agent').get(pk=pk)
+            field = Field.objects.select_related('assigned_to') \
+                                 .prefetch_related('updates__agent') \
+                                 .get(pk=pk)
             self.check_object_permissions(request, field)
             return field
         except Field.DoesNotExist:
@@ -247,7 +267,11 @@ class FieldDetailView(APIView):
 # ── Field Updates ──────────────────────────────────────────────────────────────
 
 class FieldUpdateView(APIView):
-    """POST /api/fields/<id>/updates/ — post a stage update."""
+    """
+    POST /api/fields/<id>/updates/
+    Creates a FieldUpdate log entry and advances the field's current_stage.
+    Accessible by the assigned agent or any admin.
+    """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAdminOrAssignedAgent]
 
@@ -269,10 +293,15 @@ class FieldUpdateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Log the update
         update = FieldUpdate.objects.create(
-            field=field, agent=request.user,
-            new_stage=new_stage, notes=notes,
+            field=field,
+            agent=request.user,
+            new_stage=new_stage,
+            notes=notes,
         )
+
+        # Advance the field stage
         field.current_stage = new_stage
         field.save()
 
@@ -282,7 +311,12 @@ class FieldUpdateView(APIView):
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
 class DashboardStatsView(APIView):
-    """GET /api/dashboard/ — aggregated stats for the dashboard."""
+    """
+    GET /api/dashboard/
+    Returns aggregated stats tailored to the user's role.
+    Admin: all fields + agent count + at-risk list
+    Agent: only their assigned fields
+    """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -294,17 +328,21 @@ class DashboardStatsView(APIView):
         else:
             fields = list(Field.objects.filter(assigned_to=request.user))
 
-        status_counts = {'active': 0, 'at_risk': 0, 'completed': 0}
-        stage_counts  = {'planted': 0, 'growing': 0, 'ready': 0, 'harvested': 0}
+        # Compute status counts using the model's @property
+        status_counts  = {'active': 0, 'at_risk': 0, 'completed': 0}
+        stage_counts   = {'planted': 0, 'growing': 0, 'ready': 0, 'harvested': 0}
         at_risk_fields = []
 
         for f in fields:
             s = f.status
-            status_counts[s] = status_counts.get(s, 0) + 1
+            status_counts[s]              = status_counts.get(s, 0) + 1
             stage_counts[f.current_stage] = stage_counts.get(f.current_stage, 0) + 1
+
             if s == 'at_risk':
                 at_risk_fields.append({
-                    'id': f.id, 'name': f.name, 'crop': f.crop_type,
+                    'id':           f.id,
+                    'name':         f.name,
+                    'crop':         f.crop_type,
                     'days_planted': (timezone.now().date() - f.planting_date).days,
                 })
 
