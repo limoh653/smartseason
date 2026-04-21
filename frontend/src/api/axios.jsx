@@ -1,31 +1,37 @@
 /**
- * Axios instance configured for the SmartSeason API.
- * Uses httpOnly cookies for auth — no tokens in localStorage.
+ * Axios instance for SmartSeason API
+ * - Uses httpOnly cookies (withCredentials)
+ * - Works in both development (Vite proxy) and production (Render)
  */
+
 import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.PROD
-    ? "https://smartseason-07cd.onrender.com"
-    : "http://localhost:8000",                          // empty in dev — Vite proxy handles /api requests
-  withCredentials: true,           // send cookies automatically on every request
+    ? "https://smartseason-07cd.onrender.com/api" // ✅ production backend
+    : "/api",                                     // ✅ Vite proxy in dev
+  withCredentials: true,                          // ✅ send cookies
 });
 
-
-
-
+// ======================
+// RESPONSE INTERCEPTOR
+// ======================
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const url = error.config?.url || ''
-    const status = error.response?.status
-    
-    if (status === 401 && !url.includes('/api/auth/me/')) {
-      window.location.href = '/login'
+    const url = error.config?.url || "";
+    const status = error.response?.status;
+
+    // ✅ Handle unauthorized users safely
+    if (status === 401) {
+      // Avoid redirect loop for auth check endpoint
+      if (!url.includes("/auth/me")) {
+        window.location.href = "/login";
+      }
     }
 
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
 export default api;
