@@ -87,7 +87,7 @@ DATABASES = {
 # ── REST FRAMEWORK ─────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "api.views.CookieJWTAuthentication",  # 🔥 IMPORTANT FIX
+        "api.authentication.CookieJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
