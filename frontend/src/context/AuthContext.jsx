@@ -4,31 +4,48 @@ import api from '../api/axios'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // ─────────────────────────────────────────────
+  // Load current user on app start
+  // ─────────────────────────────────────────────
   useEffect(() => {
     const fetchMe = async () => {
       try {
         const res = await api.get('/api/auth/me/')
         setUser(res.data)
-      } catch {
-        // Cookie missing or expired — just set null, don't redirect here
-        // The PrivateRoute component handles the redirect to /login
+      } catch (err) {
         setUser(null)
       } finally {
         setLoading(false)
       }
     }
-    fetchMe()
-  }, [])  // ← runs only once on mount
 
+    fetchMe()
+  }, [])
+
+  // ─────────────────────────────────────────────
+  // LOGIN
+  // ─────────────────────────────────────────────
   const login = async ({ username, password }) => {
-    const res = await api.post('/api/auth/login/', { username, password })
-    setUser(res.data.user)
-    return res.data.user
+    try {
+      await api.post('/api/auth/login/', { username, password })
+
+      // after login, immediately fetch user
+      const res = await api.get('/api/auth/me/')
+      setUser(res.data)
+
+      return res.data
+    } catch (err) {
+      setUser(null)
+      throw err
+    }
   }
 
+  // ─────────────────────────────────────────────
+  // LOGOUT
+  // ─────────────────────────────────────────────
   const logout = async () => {
     try {
       await api.post('/api/auth/logout/')
@@ -38,10 +55,26 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ─────────────────────────────────────────────
+  // SAFE ROLE CHECK
+  // ─────────────────────────────────────────────
   const isAdmin = () => user?.role === 'admin'
 
+  // ─────────────────────────────────────────────
+  // PROVIDER
+  // ─────────────────────────────────────────────
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        login,
+        logout,
+        isAdmin,
+        loading,
+        isAuthenticated: !!user
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

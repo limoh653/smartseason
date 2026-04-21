@@ -4,14 +4,19 @@ import FieldCard from '../components/FieldCard'
 import { useAuth } from '../context/AuthContext'
 
 export default function AgentDashboard() {
-  const { user }              = useAuth()
-  const [stats, setStats]     = useState(null)
-  const [fields, setFields]   = useState([])
+  const { user } = useAuth()
+
+  const [stats, setStats] = useState(null)
+  const [fields, setFields] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!user) return
+
     const fetchData = async () => {
+      setLoading(true)
+
       try {
         const [statsRes, fieldsRes] = await Promise.all([
           api.get('/api/dashboard/'),
@@ -20,59 +25,62 @@ export default function AgentDashboard() {
 
         setStats(statsRes.data)
 
-        // Safely extract fields regardless of response shape
         const raw = fieldsRes.data
+
         if (Array.isArray(raw)) {
           setFields(raw)
-        } else if (raw?.results && Array.isArray(raw.results)) {
-          setFields(raw.results)        // DRF pagination shape
+        } else if (raw?.results) {
+          setFields(raw.results)
         } else {
-          setFields([])                 // fallback — unknown shape
-          console.warn('Unexpected fields response shape:', raw)
+          setFields([])
         }
 
       } catch (err) {
-        console.error('Dashboard fetch error:', err)
-        setError('Failed to load your fields. Please try again.')
+        console.error(err)
+
+        if (err.response?.status === 401) {
+          setError('Session expired. Please login again.')
+        } else {
+          setError('Failed to load your fields.')
+        }
+
       } finally {
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [])
+  }, [user])
 
-  if (loading) return <div style={styles.loading}>⏳ Loading your fields…</div>
-  if (error)   return <div style={styles.error}>{error}</div>
+  if (loading) return <div style={styles.loading}>Loading your fields…</div>
+  if (error) return <div style={styles.error}>{error}</div>
 
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>
         Welcome, {user?.first_name || user?.username} 👋
       </h1>
-      <p style={styles.subtitle}>Here's the status of your assigned fields.</p>
 
-      {/* Stats pills */}
       <div style={styles.statsRow}>
-        <StatPill label="Assigned Fields" value={stats?.total_fields}            bg="#e8f5e9" color="#2e7d32" />
-        <StatPill label="Active"          value={stats?.status_counts?.active}   bg="#e8f5e9" color="#388e3c" />
-        <StatPill label="At Risk"         value={stats?.status_counts?.at_risk}  bg="#fff3e0" color="#e65100" />
-        <StatPill label="Completed"       value={stats?.status_counts?.completed} bg="#e3f2fd" color="#1565c0" />
+        <StatPill label="Assigned Fields" value={stats?.total_fields} bg="#e8f5e9" color="#2e7d32" />
+        <StatPill label="Active" value={stats?.status_counts?.active} bg="#e8f5e9" color="#388e3c" />
+        <StatPill label="At Risk" value={stats?.status_counts?.at_risk} bg="#fff3e0" color="#e65100" />
+        <StatPill label="Completed" value={stats?.status_counts?.completed} bg="#e3f2fd" color="#1565c0" />
       </div>
 
-      {/* At risk alert */}
       {stats?.at_risk_fields?.length > 0 && (
         <div style={styles.alert}>
-          <strong>⚠️ Attention needed: </strong>
-          {stats.at_risk_fields.map(f => f.name).join(', ')} — these fields may need intervention.
+          ⚠️ {stats.at_risk_fields.map(f => f?.name || 'Unknown').join(', ')}
         </div>
       )}
 
-      {/* Field list */}
       <h2 style={styles.sectionTitle}>My Fields ({fields.length})</h2>
+
       {fields.length === 0
         ? <p style={styles.empty}>No fields assigned to you yet.</p>
-        : fields.map(f => <FieldCard key={f.id} field={f} />)
+        : fields.map(f => (
+            <FieldCard key={f?.id || Math.random()} field={f} />
+          ))
       }
     </div>
   )
@@ -88,16 +96,20 @@ function StatPill({ label, value, bg, color }) {
 }
 
 const styles = {
-  page:         { padding: '2rem', maxWidth: '800px', margin: '0 auto' },
-  title:        { color: '#1a2e1a', fontSize: '1.6rem', marginBottom: '0.25rem' },
-  subtitle:     { color: '#888', marginBottom: '1.5rem' },
-  statsRow:     { display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' },
-  pill:         { borderRadius: '12px', padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '120px' },
-  pillValue:    { fontSize: '2rem', fontWeight: 800 },
-  pillLabel:    { fontSize: '0.8rem', color: '#777', marginTop: '0.2rem' },
-  alert:        { background: '#fff3e0', border: '1px solid #ffcc80', padding: '0.75rem 1rem', borderRadius: '8px', color: '#e65100', fontSize: '0.9rem', marginBottom: '1.5rem' },
-  sectionTitle: { color: '#2d4a2d', fontSize: '1.1rem', marginBottom: '1rem' },
-  empty:        { color: '#aaa', textAlign: 'center', padding: '2rem' },
-  loading:      { textAlign: 'center', padding: '4rem', color: '#888' },
-  error:        { textAlign: 'center', padding: '4rem', color: '#c0392b' },
+  page: { padding: '2rem', maxWidth: '800px', margin: '0 auto' },
+  title: { fontSize: '1.6rem', marginBottom: '0.5rem' },
+
+  statsRow: { display: 'flex', gap: '1rem', flexWrap: 'wrap' },
+
+  pill: { padding: '1rem', borderRadius: '12px', minWidth: '120px' },
+  pillValue: { fontSize: '2rem', fontWeight: 800 },
+  pillLabel: { fontSize: '0.8rem', color: '#777' },
+
+  alert: { marginTop: '1rem', background: '#fff3e0', padding: '1rem' },
+
+  sectionTitle: { marginTop: '1.5rem' },
+
+  empty: { textAlign: 'center', color: '#aaa' },
+  loading: { textAlign: 'center', padding: '4rem' },
+  error: { textAlign: 'center', padding: '4rem', color: 'red' },
 }
