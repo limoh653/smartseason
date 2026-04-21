@@ -7,31 +7,31 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // On mount, verify the cookie with the server and get user info
   useEffect(() => {
     const fetchMe = async () => {
       try {
         const res = await api.get('/api/auth/me/')
         setUser(res.data)
       } catch {
-        setUser(null)  // Cookie missing or expired
+        // Cookie missing or expired — just set null, don't redirect here
+        // The PrivateRoute component handles the redirect to /login
+        setUser(null)
       } finally {
         setLoading(false)
       }
     }
     fetchMe()
-  }, [])
+  }, [])  // ← runs only once on mount
 
   const login = async ({ username, password }) => {
     const res = await api.post('/api/auth/login/', { username, password })
-    // Cookies are set by Django — just save the user info
     setUser(res.data.user)
     return res.data.user
   }
 
   const logout = async () => {
     try {
-      await api.post('/api/auth/logout/')  // clears cookies server-side
+      await api.post('/api/auth/logout/')
     } finally {
       setUser(null)
       window.location.href = '/login'
