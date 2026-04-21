@@ -89,3 +89,64 @@ export default function Login() {
     </div>
   )
 }
+const styles = {
+  page: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #1a2e1a 0%, #2d4a2d 50%, #1a3320 100%)'
+  },
+  card: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '2.5rem',
+    width: '360px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    textAlign: 'center'
+  },
+  logo: { fontSize: '3rem', marginBottom: '0.5rem' },
+  title: { margin: '0 0 0.25rem', fontSize: '1.8rem', color: '#1a2e1a', fontWeight: 800 },
+  subtitle: { color: '#7a9a7a', margin: '0 0 2rem', fontSize: '0.9rem' },
+
+  form: { textAlign: 'left' },
+  field: { marginBottom: '1.25rem' },
+  label: { display: 'block', marginBottom: '0.4rem', fontWeight: 600, color: '#333', fontSize: '0.9rem' },
+
+  input: {
+    width: '100%',
+    padding: '10px 12px',
+    border: '1.5px solid #ddd',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    boxSizing: 'border-box'
+  },
+
+  error: {
+    background: '#ffeaea',
+    color: '#c0392b',
+    padding: '10px',
+    borderRadius: '8px',
+    fontSize: '0.88rem',
+    marginBottom: '1rem'
+  },
+
+  btn: {
+    width: '100%',
+    padding: '12px',
+    background: '#2d6a2d',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    marginTop: '0.5rem'
+  },
+
+  hint: {
+    color: '#aaa',
+    fontSize: '0.78rem',
+    marginTop: '1.5rem'
+  }
+}
