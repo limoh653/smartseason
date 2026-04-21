@@ -54,6 +54,8 @@ class CookieJWTAuthentication(JWTAuthentication):
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
 
+from django.conf import settings as django_settings
+
 class AuthView(APIView):
     """
     POST /api/auth/login/
@@ -62,7 +64,7 @@ class AuthView(APIView):
       - refresh_token (7 days)
     Returns user info in the response body (no tokens in body).
     """
-    permission_classes = []  # Public
+    permission_classes = []
 
     def post(self, request):
         from django.contrib.auth import authenticate
@@ -81,31 +83,34 @@ class AuthView(APIView):
         UserProfile.objects.get_or_create(user=user, defaults={'role': 'agent'})
 
         # Generate tokens
-        refresh = RefreshToken.for_user(user)
+        refresh      = RefreshToken.for_user(user)
         access_token  = str(refresh.access_token)
         refresh_token = str(refresh)
 
-        response = Response({
-            'user': UserSerializer(user).data,
-            # No tokens in the response body — they live in cookies only
-        })
+        # In production (Render) we're on HTTPS across different domains
+        # so cookies need secure=True and samesite='None'
+        # In development cookies are on same localhost so Lax + secure=False works
+        is_production = not django_settings.DEBUG
+        secure   = is_production
+        samesite = 'None' if is_production else 'Lax'
 
-        # Set httpOnly cookies — JavaScript cannot read these
+        response = Response({'user': UserSerializer(user).data})
+
         response.set_cookie(
             key='access_token',
             value=access_token,
-            httponly=True,           # JS cannot access
-            secure=False,            # Set True in production (HTTPS)
-            samesite='Lax',          # Protects against CSRF
-            max_age=60 * 60 * 8,     # 8 hours in seconds
+            httponly=True,
+            secure=secure,
+            samesite=samesite,
+            max_age=60 * 60 * 8,        # 8 hours
         )
         response.set_cookie(
             key='refresh_token',
             value=refresh_token,
             httponly=True,
-            secure=False,            # Set True in production
-            samesite='Lax',
-            max_age=60 * 60 * 24 * 7,  # 7 days in seconds
+            secure=secure,
+            samesite=samesite,
+            max_age=60 * 60 * 24 * 7,   # 7 days
         )
 
         return response
@@ -114,14 +119,27 @@ class AuthView(APIView):
 class LogoutView(APIView):
     """
     POST /api/auth/logout/
-    Clears both auth cookies, effectively logging the user out.
+    Clears both auth cookies server-side.
     """
     permission_classes = []
 
     def post(self, request):
+        is_production = not django_settings.DEBUG
+        secure   = is_production
+        samesite = 'None' if is_production else 'Lax'
+
         response = Response({'detail': 'Logged out successfully.'})
-        response.delete_cookie('access_token')
-        response.delete_cookie('refresh_token')
+
+        # Must pass same secure/samesite as when setting
+        # otherwise the browser won't match and delete the cookie
+        response.delete_cookie(
+            'access_token',
+            samesite=samesite,
+        )
+        response.delete_cookie(
+            'refresh_token',
+            samesite=samesite,
+        )
         return response
 
 
