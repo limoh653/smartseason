@@ -51,7 +51,13 @@ export default function ManageFields() {
       if (!payload.assigned_to_id) delete payload.assigned_to_id;
 
       const res = await api.post('/api/fields/', payload);
-      setFields([res.data, ...fields]);
+      
+      const newField = { ...res.data };
+      if (newField.assigned_to && typeof newField.assigned_to === 'object') {
+        newField.assigned_to = newField.assigned_to.username;
+      }
+      
+      setFields([newField, ...fields]);
       setShowForm(false);
       setForm({ name: '', crop_type: '', planting_date: '', location: '', assigned_to_id: '', current_stage: 'planted' });
       setMessage('✅ Field created successfully!');
