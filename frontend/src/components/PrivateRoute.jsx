@@ -12,7 +12,13 @@ export default function PrivateRoute({ children, requiredRole }) {
   const { user, loading } = useAuth();
 
   // Wait until auth state is ready
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
+        <h2>Loading application... (If backend is asleep, this may take up to 50 seconds)</h2>
+      </div>
+    );
+  }
 
   // Not logged in it redirects to login page
   if (!user) return <Navigate to="/login" replace />;
