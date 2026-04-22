@@ -14,6 +14,10 @@ Make sure you have the following installed on your computer:
 - [Node.js and npm](https://nodejs.org/) (for the frontend)
 
 ### Step 1: Start the Backend (Server)
+0. clone the project from github
+    ```bash
+    git clone https://github.com/limoh653/smartseason.git
+    ```
 1. Open a terminal and navigate to the `backend` folder:
    ```bash
    cd backend
@@ -56,7 +60,7 @@ You're all set! You can now log in and use SmartSeason.
 
 Every field in the system is automatically assigned a **Status** to help you quickly identify crops that need attention. Here is how the system decides what status to show:
 
-- ✅ **Completed** 
+-  **Completed** 
   A field is marked as "Completed" as soon as the field agent updates the crop's lifecycle stage to **Harvested**. 
 
 - ⚠️ **At Risk**
@@ -64,3 +68,11 @@ Every field in the system is automatically assigned a **Status** to help you qui
 
 - 🌿 **Active**
   If a field has not been harvested yet, and is still within the normal 90-day growing window (or is marked as "Ready" to be harvested), it is considered "Active" and progressing normally.
+
+  ## testing credentials
+  Username: admin
+  Password: admin123
+
+  Username: user1  Password: user123
+
+   username : user2  Password: user456S
