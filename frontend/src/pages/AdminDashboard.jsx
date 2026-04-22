@@ -12,7 +12,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 🚨 wait for auth before calling APIs
+    //wait for auth before calling APIs
     if (authLoading) return
     if (!user) return
 

@@ -7,9 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // ─────────────────────────────────────────────
-  // Load current user on app start
-  // ─────────────────────────────────────────────
+  // load current user on app start
   useEffect(() => {
     const fetchMe = async () => {
       try {
@@ -25,9 +23,7 @@ export function AuthProvider({ children }) {
     fetchMe()
   }, [])
 
-  // ─────────────────────────────────────────────
-  // LOGIN
-  // ─────────────────────────────────────────────
+  // Login
   const login = async ({ username, password }) => {
     try {
       await api.post('/api/auth/login/', { username, password })
@@ -43,9 +39,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // LOGOUT
-  // ─────────────────────────────────────────────
+  // Logout
   const logout = async () => {
     try {
       await api.post('/api/auth/logout/')
@@ -55,14 +49,10 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // SAFE ROLE CHECK
-  // ─────────────────────────────────────────────
+  // Admin check
   const isAdmin = () => user?.role === 'admin'
 
-  // ─────────────────────────────────────────────
-  // PROVIDER
-  // ─────────────────────────────────────────────
+  // Provider
   return (
     <AuthContext.Provider
       value={{

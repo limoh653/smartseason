@@ -1,7 +1,3 @@
-"""
-Django settings for SmartSeason Field Monitoring System.
-Production-ready configuration for Render deployment.
-"""
 
 import os
 from pathlib import Path
@@ -11,7 +7,7 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ── SECURITY ───────────────────────────────────────────────
+#SECURITY 
 SECRET_KEY = config("SECRET_KEY", default="fallback-secret-key")
 DEBUG = config("DEBUG", default=False, cast=bool)
 
@@ -21,7 +17,7 @@ ALLOWED_HOSTS = [
     "smartseason-07cd.onrender.com",
 ]
 
-# ── APPLICATIONS ───────────────────────────────────────────
+# APPLICATIONS 
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -38,7 +34,7 @@ INSTALLED_APPS = [
     "api",
 ]
 
-# ── MIDDLEWARE ─────────────────────────────────────────────
+# MIDDLEWARE 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -72,7 +68,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "smartseason.wsgi.application"
 
-# ── DATABASE ───────────────────────────────────────────────
+# DATABASE
 DATABASES = {
     "default": dj_database_url.config(
         default=config(
@@ -84,7 +80,7 @@ DATABASES = {
     )
 }
 
-# ── REST FRAMEWORK ─────────────────────────────────────────
+# REST FRAMEWORK
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "api.authentication.CookieJWTAuthentication",
@@ -94,14 +90,14 @@ REST_FRAMEWORK = {
     ),
 }
 
-# ── JWT SETTINGS ───────────────────────────────────────────
+# JWT SETTINGS 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
 }
 
-# ── CORS CONFIG ────────────────────────────────────────────
+# CORS CONFIG 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -111,21 +107,22 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 
-# ── CSRF CONFIG ─────────────────────
+# CSRF CONFIG
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
     "https://smartseason-1-6595.onrender.com",
 ]
 
-# ── COOKIE SETTINGS ────────────────────────────────────────
+# COOKIE SETTINGS
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
 SESSION_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"
 CSRF_COOKIE_SAMESITE = "None" if not DEBUG else "Lax"
 
-# ── PASSWORD VALIDATION ────────────────────────────────────
+# PASSWORD VALIDATION 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -133,17 +130,17 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# ── INTERNATIONALIZATION ───────────────────────────────────
+# INTERNATIONALIZATION 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# ── STATIC FILES ───────────────────────────────────────────
+# STATIC FILES
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# ── DEFAULT PRIMARY KEY ────────────────────────────────────
+# DEFAULT PRIMARY KEY
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

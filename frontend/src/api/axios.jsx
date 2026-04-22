@@ -8,7 +8,7 @@ const BASE_URL =
 
 const api = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true, // send cookies automatically on every request
+  withCredentials: true,
 });
 
 api.interceptors.response.use(
@@ -17,8 +17,7 @@ api.interceptors.response.use(
     const url = error.config?.url || "";
     const status = error.response?.status;
 
-    // 401 on /me/ is expected when not logged in —
-    // let AuthContext handle it, don't redirect here
+    // if not logged in it will show a 401 error initially before redirecting to login page
     if (status === 401 && !url.includes("/api/auth/me/")) {
       window.location.href = "/login";
     }

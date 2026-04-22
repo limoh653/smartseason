@@ -8,11 +8,11 @@ import api from '../api/axios';
 import FieldCard from '../components/FieldCard';
 
 export default function ManageFields() {
-  const [fields, setFields]   = useState([]);
-  const [agents, setAgents]   = useState([]);
+  const [fields, setFields] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
   const [form, setForm] = useState({
@@ -51,18 +51,18 @@ export default function ManageFields() {
       if (!payload.assigned_to_id) delete payload.assigned_to_id;
 
       const res = await api.post('/api/fields/', payload);
-      
+
       const newField = { ...res.data };
       if (newField.assigned_to && typeof newField.assigned_to === 'object') {
         newField.assigned_to = newField.assigned_to.username;
       }
-      
+
       setFields([newField, ...fields]);
       setShowForm(false);
       setForm({ name: '', crop_type: '', planting_date: '', location: '', assigned_to_id: '', current_stage: 'planted' });
-      setMessage('✅ Field created successfully!');
+      setMessage('SField created successfully!');
     } catch (err) {
-      setMessage('❌ Failed to create field. Check all required fields.');
+      setMessage('Failed to create field. Check all required fields.');
     } finally {
       setSaving(false);
     }
@@ -98,8 +98,8 @@ export default function ManageFields() {
               </FormField>
               <FormField label="Initial Stage">
                 <select name="current_stage" value={form.current_stage} onChange={handleChange} style={styles.input}>
-                  {['planted','growing','ready','harvested'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>
+                  {['planted', 'growing', 'ready', 'harvested'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
               </FormField>
@@ -146,17 +146,17 @@ function FormField({ label, children }) {
 }
 
 const styles = {
-  page:      { padding: '2rem', maxWidth: '1000px', margin: '0 auto' },
-  topRow:    { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' },
-  title:     { margin: 0, color: '#1a2e1a', fontSize: '1.8rem' },
+  page: { padding: '2rem', maxWidth: '1000px', margin: '0 auto' },
+  topRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' },
+  title: { margin: 0, color: '#1a2e1a', fontSize: '1.8rem' },
   createBtn: { background: '#2d6a2d', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 },
-  message:   { marginBottom: '1rem', fontSize: '0.9rem' },
-  formCard:  { background: '#fff', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' },
+  message: { marginBottom: '1rem', fontSize: '0.9rem' },
+  formCard: { background: '#fff', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' },
   formTitle: { margin: '0 0 1.25rem', color: '#2d4a2d' },
-  grid2:     { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' },
-  input:     { width: '100%', padding: '9px 12px', border: '1.5px solid #ddd', borderRadius: '7px', fontSize: '0.9rem', boxSizing: 'border-box' },
-  saveBtn:   { background: '#2d6a2d', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' },
-  list:      {},
-  empty:     { color: '#aaa', textAlign: 'center', padding: '3rem' },
-  loading:   { textAlign: 'center', padding: '4rem', color: '#888' },
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' },
+  input: { width: '100%', padding: '9px 12px', border: '1.5px solid #ddd', borderRadius: '7px', fontSize: '0.9rem', boxSizing: 'border-box' },
+  saveBtn: { background: '#2d6a2d', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' },
+  list: {},
+  empty: { color: '#aaa', textAlign: 'center', padding: '3rem' },
+  loading: { textAlign: 'center', padding: '4rem', color: '#888' },
 };
