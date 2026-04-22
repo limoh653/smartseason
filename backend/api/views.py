@@ -197,6 +197,42 @@ class DashboardStatsView(APIView):
         else:
             fields = Field.objects.filter(assigned_to=request.user)
 
-        return Response({
+        status_counts = {"active": 0, "at_risk": 0, "completed": 0}
+        stage_counts = {}
+        at_risk_fields = []
+
+        now_date = timezone.now().date()
+
+        for field in fields:
+            # Status counts
+            st = field.status
+            if st in status_counts:
+                status_counts[st] += 1
+            else:
+                status_counts[st] = 1
+
+            # Stage counts
+            stage = field.current_stage
+            stage_counts[stage] = stage_counts.get(stage, 0) + 1
+
+            # At risk details
+            if st == 'at_risk':
+                days_planted = (now_date - field.planting_date).days
+                at_risk_fields.append({
+                    "id": field.id,
+                    "name": field.name,
+                    "crop": field.crop_type,
+                    "days_planted": days_planted
+                })
+
+        data = {
             "total_fields": fields.count(),
-        })
+            "status_counts": status_counts,
+            "stage_counts": stage_counts,
+            "at_risk_fields": at_risk_fields,
+        }
+
+        if role == "admin":
+            data["total_agents"] = User.objects.filter(profile__role="agent").count()
+
+        return Response(data)
